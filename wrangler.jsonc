@@ -1,0 +1,13 @@
+// Stage Manager: release tracking. See README.md. Secrets: ASC_KEY, ASC_KEY_ID, ASC_ISSUER_ID (scripts/put-apple-key.sh).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "stage-manager",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-10-01",
+  "routes": [{ "pattern": "mutaafaziz.com/stage/*", "zone_name": "mutaafaziz.com" }],
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  "kv_namespaces": [{ "binding": "KV", "id": "cba89c8288f34867a5e53ff138b8ad2e" }],
+  "services": [{ "binding": "CUE", "service": "cue", "props": { "source": "stage-manager" } }]
+}
