@@ -20,15 +20,18 @@ test('the JWT is ES256, verifiable, and lives 20 minutes', async () => {
 
 const apple = (versions) => async (url) => {
   const u = new URL(url);
+  if (u.pathname.endsWith('/betaGroups')) return u.pathname.includes('/2/') ? new Response('', { status: 403 }) : Response.json({ data: [{ attributes: { isInternalGroup: true, publicLinkEnabled: false } }, { attributes: { isInternalGroup: false, publicLinkEnabled: true, publicLink: 'https://testflight.apple.com/join/abc' } }] });
   if (u.pathname === '/v1/apps') return Response.json({ data: [{ id: '1', attributes: { name: 'Moon Club', bundleId: 'com.x.moon' } }, { id: '2', attributes: { name: 'Draft', bundleId: 'com.x.draft' } }] });
   const id = u.pathname.split('/')[3];
   return Response.json({ data: versions[id] ?? [] });
 };
 const v = (versionString, appStoreState) => ({ attributes: { versionString, appStoreState } });
 
-test('an editable version wins over a newer locked one, and apps with no version are skipped', async () => {
-  const got = await states(client('jwt', apple({ 1: [v('0.16.0', 'READY_FOR_SALE'), v('0.17.0', 'PREPARE_FOR_SUBMISSION')] })));
-  assert.deepEqual(got, { 'com.x.moon': { app: 'Moon Club', version: '0.17.0', state: 'PREPARE_FOR_SUBMISSION' } });
+test('an editable version wins, the live version and public TestFlight link are reported, and a 403 on beta groups is tolerated', async () => {
+  const got = await states(client('jwt', apple({ 1: [v('0.16.0', 'READY_FOR_SALE'), v('0.17.0', 'PREPARE_FOR_SUBMISSION')], 2: [v('1.0', 'WAITING_FOR_REVIEW')] })));
+  assert.deepEqual(got['com.x.moon'], { app: 'Moon Club', id: '1', version: '0.17.0', state: 'PREPARE_FOR_SUBMISSION', liveVersion: '0.16.0', testflight: 'https://testflight.apple.com/join/abc' });
+  // a role that can't read beta groups still gets versions
+  assert.deepEqual(got['com.x.draft'], { app: 'Draft', id: '2', version: '1.0', state: 'WAITING_FOR_REVIEW', liveVersion: null, testflight: null });
   assert.ok(EDITABLE.has('REJECTED'));
 });
 
