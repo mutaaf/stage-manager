@@ -10,6 +10,9 @@ const json = (b, s = 200) => new Response(JSON.stringify(b), { status: s, header
 export default class StageManager extends WorkerEntrypoint {
   async tick() { return tick(this.env); }
 
+  // Read-only store facts for Cast List (github.com/mutaaf/cast-list): what Apple said on the last hourly read.
+  async snapshot() { return { at: (await this.env.KV.get(RUN, 'json'))?.at ?? null, apps: (await this.env.KV.get('review-state', 'json')) ?? {} }; }
+
   async fetch(req) {
     const path = new URL(req.url).pathname.replace(/\/+$/, '');
     if (path === '/stage/api/health') {

@@ -27,14 +27,28 @@ export function client(jwt, f = fetch) {
   };
 }
 
-/** { bundleId: { app, version, state } } for every app on the team. */
+export const LIVE = new Set(['READY_FOR_SALE', 'READY_FOR_DISTRIBUTION']);
+
+/**
+ * { bundleId: { app, id, version, state, liveVersion, testflight } } for every app on the team.
+ * version/state: the version being worked on (an editable one wins, else the newest), as Lobby reads it.
+ * liveVersion: what's on the App Store now, if anything. testflight: an open public beta link, if any.
+ * Beta groups are best-effort: a key whose role can't read them still reports versions.
+ */
 export async function states(get) {
   const apps = (await get('/v1/apps?limit=200&fields[apps]=name,bundleId')).data;
   const out = {};
   for (const a of apps) {
-    const vs = (await get(`/v1/apps/${a.id}/appStoreVersions?filter[platform]=IOS&limit=5&fields[appStoreVersions]=versionString,appStoreState`)).data;
+    const vs = (await get(`/v1/apps/${a.id}/appStoreVersions?filter[platform]=IOS&limit=10&fields[appStoreVersions]=versionString,appStoreState`)).data;
     const v = vs.find((x) => EDITABLE.has(x.attributes.appStoreState)) ?? vs[0];
-    if (v?.attributes.appStoreState) out[a.attributes.bundleId] = { app: a.attributes.name, version: v.attributes.versionString, state: v.attributes.appStoreState };
+    if (!v?.attributes.appStoreState) continue;
+    const live = vs.find((x) => LIVE.has(x.attributes.appStoreState));
+    let testflight = null;
+    try {
+      const gs = (await get(`/v1/apps/${a.id}/betaGroups?limit=50&fields[betaGroups]=isInternalGroup,publicLinkEnabled,publicLink`)).data;
+      testflight = gs.find((g) => !g.attributes.isInternalGroup && g.attributes.publicLinkEnabled && g.attributes.publicLink)?.attributes.publicLink ?? null;
+    } catch (e) { if (e.status !== 403) throw e; }
+    out[a.attributes.bundleId] = { app: a.attributes.name, id: a.id, version: v.attributes.versionString, state: v.attributes.appStoreState, liveVersion: live?.attributes.versionString ?? null, testflight };
   }
   return out;
 }

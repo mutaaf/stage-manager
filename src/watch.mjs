@@ -6,7 +6,7 @@ export function diff(last, now) {
   const changes = [];
   for (const [bundle, s] of Object.entries(now)) {
     const was = last[bundle];
-    if (was && (was.version !== s.version || was.state !== s.state)) {
+    if (was && was.state && (was.version !== s.version || was.state !== s.state)) {
       changes.push({ type: 'app.review.changed', id: eventId(s.app, s.version, s.state), data: { app: s.app, version: s.version, from: was.state, to: s.state } });
     }
   }
