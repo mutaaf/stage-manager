@@ -9,6 +9,7 @@ Read README.md first. AGENTS.md has the rules.
 | KV free tier is 1,000 writes a day | State is written only when it changes; `last-run` is one write an hour. |
 | Never print the key | The install script reads the .p8 only inside Node and pipes it to `wrangler secret put`. |
 | Deploy before putting secrets | `wrangler secret put` needs the Worker to exist. |
+| Logging | Each tick and request writes one `{service, event, ms, ok}` line via [stagehand](https://github.com/mutaaf/stagehand) (GitHub dependency): `npm ci` first. |
 
 ## Definition of done
 
